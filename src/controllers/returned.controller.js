@@ -16,37 +16,42 @@ const updateCardStatus = asyncHandler(async (cardId, newStatus) => {
   }
 })
 
-const importReturnsFromCSV = asyncHandler(async (req, res) => {
+const importReturnsFromCSV = asyncHandler(async (req, res, next) => {
+  // Read data from Returns CSV file
   const returnsFromCSV = [];
-  const csvFilePath = path.join(__dirname, "../data/Returned.csv");
 
-  // Read the CSV file
-  fs.createReadStream(csvFilePath)
-      .pipe(csvParser({ separator: '\t' })) // Set the separator to tab
-      .on('data', async (row) => {
-          // Check if the card already exists in the database
-          const existingCard = await Card.findOne({ cardId: row.cardId });
+  const readCSV = asyncHandler(async () => {
+      const csvFilePath = path.join(__dirname, "./src/data/Returned.csv");
 
-          if (!existingCard) {
-              // If the card doesn't exist, update card status and push to returnsFromCSV array
-              await updateCardStatus(row.cardId, 'RETURNED');
-              returnsFromCSV.push(row);
-          }
-      })
-      .on('end', asyncHandler(async () => {
-          // Insert new returns from CSV into the database
-          await Returned.insertMany(returnsFromCSV);
+      fs.createReadStream(csvFilePath)
+          .pipe(csvParser({ separator: '\t' })) // Set the separator to tab
+          .on('data', asyncHandler(async (row) => {
+              // Check if the card already exists in the database
+              const rowData = row['ID,Card ID,User Mobile,Timestamp'].split(',');
+              const cardId = rowData[1];
+              const userContact = rowData[2];
+              const timestamp = new Date(rowData[3]);
 
-          // Fetch returns from the database
-          const returnsFromDB = await Returned.find();
+              const existingCard = await Card.findOne({ cardId });
 
-          if (!returnsFromDB || returnsFromDB.length === 0) {
-              throw new ApiError(404, "No returns found");
-          }
+              if (!existingCard) {
+                  // If the card doesn't exist, update card status and push to returnsFromCSV array
+                  await updateCardStatus(cardId, 'RETURNED');
+                  const newReturn = await Returned.create({
+                      card: existingCard._id,
+                      userContact,
+                      timestamp
+                  });
+                  returnsFromCSV.push(newReturn);
+              }
+          }))
+          .on('end', asyncHandler(async () => {
+              // Send response with returns
+              res.status(200).json(new ApiResponse(200, returnsFromCSV, "All returns retrieved successfully from CSV"));
+          }));
+  });
 
-          // Send response with returns
-          res.status(200).json(new ApiResponse(200, returnsFromDB, "All returns retrieved successfully"));
-      }))
+  await readCSV();
 });
 
 const getAllreturnedFromDB  = asyncHandler (async(req,res)=>{

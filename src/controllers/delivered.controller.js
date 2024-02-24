@@ -16,39 +16,42 @@ const updateCardStatus = asyncHandler(async (cardId, newStatus) => {
     }
 })
 
-const importDeleveredFromCSV = asyncHandler(async (req, res) => {
+const importDeliveredFromCSV = asyncHandler(async (req, res, next) => {
+    // Read data from Deliveries CSV file
     const deliveriesFromCSV = [];
-    
-    // Path to the CSV file
-    const csvFilePath = path.join(__dirname, "../data/Deliveries.csv");
-    
-    // Read the CSV file
-    fs.createReadStream(csvFilePath)
-        .pipe(csvParser({ separator: ',' })) // Set the separator to comma
-        .on('data', async (row) => {
-            // Check if the card already exists in the database
-            const existingCard = await Card.findOne({ cardId: row.cardId });
 
-            if (!existingCard) {
-                // If the card doesn't exist, update card status and insert into deliveriesFromCSV array
-                await updateCardStatus(row.cardId, 'DELIVERED');
-                deliveriesFromCSV.push(row);
-            }
-        })
-        .on('end', asyncHandler(async () => {
-            // Insert new deliveries from CSV into the database
-            await Delivered.insertMany(deliveriesFromCSV);
-                
-            // Fetch deliveries from database
-            const deliveriesFromDB = await Delivered.find();
-                
-            if (!deliveriesFromDB || deliveriesFromDB.length === 0) {
-                throw new ApiError(404, "No deliveries found");
-            }
-                
-            // Send response with deliveries
-            res.status(200).json(new ApiResponse(200, deliveriesFromDB, "All deliveries retrieved successfully"));
-        }));
+    const readCSV = asyncHandler(async () => {
+        const csvFilePath = path.join(__dirname, "./src/data/Deliveries.csv");
+
+        fs.createReadStream(csvFilePath)
+            .pipe(csvParser({ separator: ',' })) // Set the separator to comma
+            .on('data', asyncHandler(async (row) => {
+                // Check if the card already exists in the database
+                const rowData = row['ID,Card ID,User Mobile,Timestamp'].split(',');
+                const cardId = rowData[1];
+                const userContact = rowData[2];
+                const timestamp = new Date(rowData[3]);
+
+                const existingCard = await Card.findOne({ cardId });
+
+                if (!existingCard) {
+                    // If the card doesn't exist, update card status and insert into deliveriesFromCSV array
+                    await updateCardStatus(cardId, 'DELIVERED');
+                    const newDelivery = await Delivered.create({
+                        card: existingCard._id,
+                        userContact,
+                        timestamp
+                    });
+                    deliveriesFromCSV.push(newDelivery);
+                }
+            }))
+            .on('end', asyncHandler(async () => {
+                // Send response with deliveries
+                res.status(200).json(new ApiResponse(200, deliveriesFromCSV, "All deliveries retrieved successfully from CSV"));
+            }));
+    });
+
+    await readCSV();
 });
 
 const getAllDeliveredFromDB  = asyncHandler (async(req,res)=>{

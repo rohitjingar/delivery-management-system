@@ -16,34 +16,40 @@ const updateCardStatus = asyncHandler(async (cardId, newStatus) => {
     }
 })
 
-const importPickupsFromCSV = asyncHandler(async (req, res) => {
+const importPickupsFromCSV = asyncHandler(async (req, res,next) => {
   // Read data from Pickup CSV file
   const pickupsFromCSV = [];
-  fs.createReadStream('../data/Pickup.csv')
-      .pipe(csvParser({ separator: '\t' })) // Set the separator to tab
-      .on('data', async (row) => {
-          // Check if the card already exists in the database
-          const existingCard = await Card.findOne({ cardId: row.cardId });
-
-          if (!existingCard) {
-              // If the card doesn't exist, update card status and push to pickupsFromCSV array
-              await updateCardStatus(row.cardId, 'PICKUP');
-              pickupsFromCSV.push(row);
-          }
-      })
-      .on('end', asyncHandler(async () => {
-          // Insert new pickups from CSV into the database
-          await Pickup.insertMany(pickupsFromCSV);
-
-          // Fetch pickups from database
-          const pickupsFromDB = await Pickup.find();
-          if (!pickupsFromDB || pickupsFromDB.length === 0) {
-              throw new ApiError(404, "No pickups found");
-          }
-
-          // Send response with pickups
-          res.status(200).json(new ApiResponse(200, pickupsFromDB, "Pickups updated successfully"));
-      }));
+  
+  const readCSV = asyncHandler(async() =>{
+    fs.createReadStream('./src/data/Pickup.csv')
+    .pipe(csvParser({ separator: '\t' })) // Set the separator to tab
+    .on('data', asyncHandler(async (row) => {
+       
+       // Check if the card already exists in the database
+       const rowData = row['ID,Card ID,User Mobile,Timestamp'].split(',');
+    const id = rowData[1];
+    const userContact = rowData[2];
+    const timestamp = new Date(rowData[3]);
+    
+    const card = await Card.findOne({cardId: id});
+    if (!card) {
+        throw new ApiError(404, `Card with ID ${cardId} not found`);
+    }
+    await updateCardStatus(id, 'PICKUP');
+    const newPickup = await  Pickup.create(
+        {
+        card: card._id,
+        userContact: userContact,
+        timestamp: timestamp,
+        pickupTimestamp: timestamp
+        }
+    )
+    pickupsFromCSV.push(newPickup);
+    console.log(newPickup)
+   }))
+  })
+  await  readCSV()
+  res.status(200).json(new ApiResponse(200, pickupsFromCSV, "All Pickup data fetched successfully from CSV"))
 });
 
 

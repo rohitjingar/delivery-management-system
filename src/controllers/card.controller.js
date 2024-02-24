@@ -22,9 +22,33 @@ const  getCardById = asyncHandler(async (req, res) => {
     res.status(200).json(new ApiResponse(200, card, "Card fetched successfully!"));
 })
 
+const getTheStatusOfCard = asyncHandler(async (req, res) => {
+    const { cardId, contactDetails } = req.body;
+    
+    // Validate input parameters
+    if (!cardId || !contactDetails) {
+        throw new ApiError(400, "Card ID and contact details are required");
+    }
+    
+    // Find the card in the database
+    const card = await Card.findOne({ cardId });
 
+    if (!card) {
+        throw new ApiError(404, "Card not found");
+    }
+
+    // Construct the response with the card status
+    const response = {
+        cardId: card.cardId,
+        status: card.status
+        // Add other card details here if needed
+    };
+
+    // Send response
+    res.status(200).json(new ApiResponse(200, response, "Card status retrieved successfully"));
+});
 const  createCard = asyncHandler(async (req, res) => {
-    const { cardId, userContact} = req.body;
+    const { cardId, userContact, comment} = req.body;
     if( !cardId || !userContact ){
         throw new ApiError(400, 'Please provide all fields');
     }
@@ -36,6 +60,7 @@ const  createCard = asyncHandler(async (req, res) => {
     const newCard = await Card.create({
         cardId: cardId,
         userContact: userContact,
+        comment
     });
 
     if(!newCard){
@@ -45,33 +70,35 @@ const  createCard = asyncHandler(async (req, res) => {
 })
 
 
-const  updateCard = asyncHandler(async (req, res) => {
+const updateCard = asyncHandler(async (req, res) => {
     const { id } = req.params;
-    if(!id){
-        throw new ApiError(400,"No record Id provided")
+    if (!id) {
+        throw new ApiError(400, "No record Id provided");
     }
-    const card = await  Card.findone( { cardId: id} )
-    if (!card) {
-      throw new ApiError(404, "Card not found");
-    }
+    
     const { userContact, comment } = req.body;
-
-    // Update card fields if provided
+    
+    // Prepare update object with fields provided in the request body
+    const updateObj = {};
     if (userContact) {
-      card.userContact = userContact;
+        updateObj.userContact = userContact;
     }
     if (comment) {
-      card.comment = comment;
+        updateObj.comment = comment;
     }
 
-    // Save the updated card to the database
-    const updatedCard = await card.save();
-    if(!updatedCard){
-        throw new ApiResponse(500, "Internal Server Error", "Failed to update the card")
+    // Find the document by id and update with the provided fields, while retaining old values if not provided
+    const updatedCard = await Card.findOneAndUpdate({cardId:id}, updateObj, { new: true });
+
+    if (!updatedCard) {
+        throw new ApiResponse(500, "Internal Server Error", "Failed to update the card");
     }
+
     // Send success response with the updated card
     res.status(200).json(new ApiResponse(200, updatedCard, "Card updated successfully"));
-})
+});
+
+
 
 
 const  deleteCard = asyncHandler(async (req, res) => {
@@ -79,7 +106,7 @@ const  deleteCard = asyncHandler(async (req, res) => {
     if(!id){
         throw new ApiError(400,'No card ID provided')
     }
-    const deletedCard = await Card.findByIdAndDelete({cardId: id});
+    const deletedCard = await Card.findOneAndDelete({cardId: id});
     if (!deletedCard) {
       throw new ApiError(404, "Card not found");
     }
@@ -89,6 +116,7 @@ const  deleteCard = asyncHandler(async (req, res) => {
 
 export{
   getAllCards,
+  getTheStatusOfCard,
   getCardById,
   createCard,
   updateCard,

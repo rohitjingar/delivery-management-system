@@ -16,40 +16,46 @@ const updateCardStatus = asyncHandler(async (cardId, newStatus) => {
       throw new ApiError(404, "Card not found");
   }
 })
-const importDeliveryExceptionsFromCSV = asyncHandler(async (req, res) => {
+const importDeliveryExceptionsFromCSV = asyncHandler(async (req, res, next) => {
+    // Read data from Delivery Exception CSV file
     const deliveryExceptionsFromCSV = [];
-    
-    // Path to the CSV file
-    const csvFilePath = path.join(__dirname, "../data/Delivery exception.csv");
-    
-    // Read the CSV file
-    fs.createReadStream(csvFilePath)
-        .pipe(csvParser({ separator: '\t' })) // Set the separator to tab
-        .on('data', async (row) => {
-            // Check if the card already exists in the database
-            const existingCard = await Card.findOne({ cardId: row.cardId });
 
-            if (!existingCard) {
-                // If the card doesn't exist, update card status and push to deliveryExceptionsFromCSV array
-                await updateCardStatus(row.cardId, 'DELIVERY_EXCEPTION');
-                deliveryExceptionsFromCSV.push(row);
-            }
-        })
-        .on('end', asyncHandler(async () => {
-            // Insert new delivery exceptions from CSV into the database
-            await DeliveryException.insertMany(deliveryExceptionsFromCSV);
-                
-            // Fetch delivery exceptions from the database
-            const deliveryExceptionsFromDB = await DeliveryException.find();
-                
-            if (!deliveryExceptionsFromDB || deliveryExceptionsFromDB.length === 0) {
-                throw new ApiError(404, "No delivery exceptions found");
-            }
-                
-            // Send response with delivery exceptions
-            res.status(200).json(new ApiResponse(200, deliveryExceptionsFromDB, "All delivery exceptions retrieved successfully"));
-        }));
+    const readCSV = asyncHandler(async () => {
+        const csvFilePath = path.join(__dirname, "./src/data/Delivery exception.csv");
+
+        fs.createReadStream(csvFilePath)
+            .pipe(csvParser({ separator: '\t' })) // Set the separator to tab
+            .on('data', asyncHandler(async (row) => {
+                // Check if the card already exists in the database
+                const existingCard = await Card.findOne({ cardId: row.cardId });
+
+                if (!existingCard) {
+                    // If the card doesn't exist, update card status and push to deliveryExceptionsFromCSV array
+                    await updateCardStatus(row.cardId, 'DELIVERY_EXCEPTION');
+                    deliveryExceptionsFromCSV.push(row);
+                }
+            }))
+            .on('end', asyncHandler(async () => {
+                // Insert new delivery exceptions from CSV into the database
+                await DeliveryException.insertMany(deliveryExceptionsFromCSV);
+
+                // Fetch delivery exceptions from the database
+                const deliveryExceptionsFromDB = await DeliveryException.find();
+
+                if (!deliveryExceptionsFromDB || deliveryExceptionsFromDB.length === 0) {
+                    throw new ApiError(404, "No delivery exceptions found");
+                }
+
+                // Send response with delivery exceptions
+                res.status(200).json(new ApiResponse(200, deliveryExceptionsFromDB, "All delivery exceptions retrieved successfully"));
+            }));
+    });
+
+    await readCSV();
 });
+
+
+
 
 const getAllDeliveryExceptionsFromDB  = asyncHandler (async(req,res)=>{
     const allDeliveryExceptionsData = await DeliveryException.find();
