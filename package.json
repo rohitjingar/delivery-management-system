@@ -1,0 +1,36 @@
+{
+  "name": "card_status_api",
+  "version": "1.0.0",
+  "description": "A backend service built with Express.js and MongoDB, providing real-time status updates for user cards by integrating data from partner companies' CSV files. Includes a RESTful API endpoint for querying card status using phone numbers or card IDs, streamlining internal operations and customer support processes.",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js"
+  },
+  "keywords": [
+    "backend",
+    "Express.js",
+    "MongoDB",
+    "API",
+    "card status",
+    "CSV integration",
+    "real-time updates",
+    "internal operations",
+    "customer support"
+  ],
+  "author": "Rohit Kumar Jingar",
+  "license": "ISC",
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "prettier": "^3.1.1"
+  },
+  "dependencies": {
+    "fs": "^0.0.1-security",
+    "path": "^0.12.7",
+    "csv-parser": "^3.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "mongoose": "^8.0.4"
+  }
+}
