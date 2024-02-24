@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 
 const deliveredSchema = new mongoose.Schema({
+  
   card: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Card',

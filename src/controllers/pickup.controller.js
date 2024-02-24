@@ -7,51 +7,48 @@ import Pickup from "../models/pickup.model.js";
 import fs from "fs";
 import path from "path";
 import csvParser from "csv-parser";
+const updateCardStatus = async (cardId, newStatus) => {
+  const updatedCard = await Card.findOneAndUpdate({ cardId }, { status: newStatus });
+  if (!updatedCard) {
+    throw new ApiError(404, "Card not found");
+  }
+};
 
-const updateCardStatus = asyncHandler(async (cardId, newStatus) => {
-    // Find the card by cardId and update its status
-    await Card.findOneAndUpdate({ cardId }, { status: newStatus });
-    if (!updatedCard) {
-      throw new ApiError(404, "Card not found");
-    }
-})
-
-const importPickupsFromCSV = asyncHandler(async (req, res,next) => {
-  // Read data from Pickup CSV file
-  const pickupsFromCSV = [];
-  
-  const readCSV = asyncHandler(async() =>{
-    fs.createReadStream('./src/data/Pickup.csv')
-    .pipe(csvParser({ separator: '\t' })) // Set the separator to tab
-    .on('data', asyncHandler(async (row) => {
-       
-       // Check if the card already exists in the database
-       const rowData = row['ID,Card ID,User Mobile,Timestamp'].split(',');
-    const id = rowData[1];
-    const userContact = rowData[2];
-    const timestamp = new Date(rowData[3]);
-    
-    const card = await Card.findOne({cardId: id});
-    if (!card) {
-        throw new ApiError(404, `Card with ID ${cardId} not found`);
-    }
-    await updateCardStatus(id, 'PICKUP');
-    const newPickup = await  Pickup.create(
-        {
-        card: card._id,
-        userContact: userContact,
-        timestamp: timestamp,
-        pickupTimestamp: timestamp
+const importPickupsFromCSV = asyncHandler(async (req, res) => {
+   // Assuming the CSV file is uploaded as a multipart/form-data file
+  fs.createReadStream('./src/data/Pickup.csv')
+    .pipe(csvParser({ separator: '\t' }))
+    .on('data', async (row) => {
+      const rowData = row['ID,Card ID,User Mobile,Timestamp,courierPartner'].split(',');
+      const pickupId = rowData[0];
+      const id = rowData[1];
+      const userContact = rowData[2];
+      const timestamp = new Date(rowData[3]);
+      const courierPartner = rowData[4];
+      const pickupCard = await Pickup.findOne({ pickupId: pickupId });
+      if (!pickupCard) {
+        const card = await Card.findOne({ cardId: id });
+        if (card) {
+          await updateCardStatus(id, 'PICKUP');
+          const newPickup = await Pickup.create({
+            pickupId: pickupId,
+            card: card._id,
+            userContact: userContact,
+            timestamp: timestamp,
+            pickupTimestamp: timestamp,
+            courierPartner: courierPartner
+          });
         }
-    )
-    pickupsFromCSV.push(newPickup);
-    console.log(newPickup)
-   }))
-  })
-  await  readCSV()
-  res.status(200).json(new ApiResponse(200, pickupsFromCSV, "All Pickup data fetched successfully from CSV"))
+      }
+    })
+    .on('end', async () => {
+      const allPickupData = await Pickup.find();
+      res.status(200).json(new ApiResponse(200, allPickupData, "All Pickup data fetched successfully"))
+    })
+    .on('error', (error) => {
+      res.status(500).json({ message: 'Error importing pickups', error });
+    });
 });
-
 
 const getPickupFromDB  = asyncHandler (async(req,res)=>{
   const allPickupData = await Pickup.find();

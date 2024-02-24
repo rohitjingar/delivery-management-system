@@ -117,7 +117,7 @@ const deleteDelivery = asyncHandler(async (req, res) => {
 });
 
 export {
-    importDeleveredFromCSV,
+    importDeliveredFromCSV,
     getAllDeliveredFromDB,
     getDeliveryById,
     createDelivery,

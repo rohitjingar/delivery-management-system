@@ -2,6 +2,11 @@
 import mongoose from 'mongoose';
 
 const pickupSchema = new mongoose.Schema({
+  pickupId:{
+    type: String,
+    required: true, // Unique identifier for the card
+    unique: true
+  },
   card: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Card',
@@ -22,7 +27,7 @@ const pickupSchema = new mongoose.Schema({
   pickupLocation: String, // Location where the pickup occurred
   pickupTimestamp: {
     type: Date,
-    required: true // Timestamp of when the pickup occurred
+    default: Date.now, // Actual time when the item was picked up by the courier
   }
 });
 

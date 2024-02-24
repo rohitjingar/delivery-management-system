@@ -1,7 +1,7 @@
 
 import express from 'express';
 import {
-  importDeleveredFromCSV,
+  importDeliveredFromCSV,
   getAllDeliveredFromDB,
   getDeliveryById,
   createDelivery,
@@ -12,7 +12,7 @@ import {
 const router = express.Router();
 
 router.get('/', getAllDeliveredFromDB);
-router.get('/importFromCSV', importDeleveredFromCSV)
+router.get('/importFromCSV', importDeliveredFromCSV)
 router.get('/:id', getDeliveryById);
 router.post('/', createDelivery);
 router.put('/:id', updateDelivery);
