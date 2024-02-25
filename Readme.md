@@ -2,6 +2,8 @@
 
 Welcome to the Delivery Management System! This application is designed to streamline the process of managing deliveries, pickups, and returns. This system provides robust functionality to track and manage the entire delivery lifecycle.
 
+## Model Link
+You can access the model [here](https://app.eraser.io/workspace/cAoAkb6HeVctd457AczM?origin=share).
 ## Table of Contents
 
 - [Introduction](#introduction)

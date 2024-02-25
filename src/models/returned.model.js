@@ -1,6 +1,11 @@
 import mongoose from 'mongoose';
 
 const returnedSchema = new mongoose.Schema({
+  returnedId:{
+    type: String,
+    required: true, // Unique identifier for the card
+    unique: true
+  },
   card: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Card',
