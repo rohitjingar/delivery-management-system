@@ -1,6 +1,11 @@
 import mongoose from 'mongoose';
 
 const deliveryExceptionSchema = new mongoose.Schema({
+  exceptionId:{
+    type: String,
+    required: true,
+    unique:true
+  },
   card: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Card',

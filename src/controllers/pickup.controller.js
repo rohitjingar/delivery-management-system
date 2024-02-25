@@ -59,7 +59,7 @@ const  getPickupById = asyncHandler(async (req, res) => {
         if(!pickupId){
             throw new ApiError(404, "Pickup ID is missing")
         }
-        const pickup = await Pickup.findById(pickupId);
+        const pickup = await Pickup.findOne({pickupId: pickupId});
         if (!pickup) {
             throw new ApiError(404, "Pickup not found");
         }
@@ -96,7 +96,7 @@ const  createPickup = asyncHandler(async (req, res) => {
 const  updatePickup = asyncHandler(async (req, res) => {
   const pickupId = req.params.id;
   const updateData = req.body;
-  const updatedPickup = await Pickup.findByIdAndUpdate(pickupId, updateData, { new: true });
+  const updatedPickup = await Pickup.findOneAndUpdate({pickupId: pickupId}, updateData, { new: true });
 
   // If no pickup found with the provided ID, throw an error
   if (!updatedPickup) {
@@ -110,7 +110,7 @@ const  updatePickup = asyncHandler(async (req, res) => {
 
 const  deletePickup = asyncHandler(async (req, res) => {
   const pickupId = req.params.id;
-  const deletedPickup = await Pickup.findByIdAndDelete(pickupId).populate('card');
+  const deletedPickup = await Pickup.findOneAndDelete({pickupId: pickupId}).populate('card');
   if (!deletedPickup) {
       throw new ApiError(404, "Pickup not found");
   }
