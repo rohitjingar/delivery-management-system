@@ -86,6 +86,7 @@ const createDeliveryException = asyncHandler(async (req, res) => {
     if (!card) {
         throw new ApiError(400, "Card not found");
     }
+    const existingExceptions = await  DeliveryException.findone({card: card._id})
     const ExceptionAttempts = card.deliveryExceptionAttempts
     if ( ExceptionAttempts === 2) {
         const returnedId = toString(existingExceptions[1]._id)
