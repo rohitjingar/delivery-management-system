@@ -15,6 +15,12 @@ const cardSchema = new mongoose.Schema({
     type: Date,
     default: Date.now // Timestamp of when the card status was last updated
   },
+  deliveryExceptionAttempts: {
+    type: Number,
+    default: 0, // Initialize with 0 delivery attempts
+    min: 0,
+    max: 2 // Limit delivery attempts to 2
+  },
   status: {
     type: String,
     enum: ['CREATED','PICKUP', 'DELIVERY_EXCEPTION', 'DELIVERED', 'RETURNED'], // Possible statuses for the card

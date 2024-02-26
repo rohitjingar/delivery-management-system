@@ -66,7 +66,7 @@ const getAllDeliveryExceptionsFromDB = asyncHandler(async (req, res) => {
 })
 const getDeliveryExceptionById = asyncHandler(async (req, res) => {
     const deliveryExceptionId = req.params.id;
-    const deliveryException = await DeliveryException.findById(deliveryExceptionId);
+    const deliveryException = await DeliveryException.findOne({ exceptionId: deliveryExceptionId });
     if (!deliveryException) {
         throw new ApiError(404, "Delivery exception not found");
     }
@@ -74,57 +74,58 @@ const getDeliveryExceptionById = asyncHandler(async (req, res) => {
 });
 
 const createDeliveryException = asyncHandler(async (req, res) => {
-    const { cardId, userContact, exceptionType, comment } = req.body;
-    if (!cardId || !userContact || !exceptionType) {
+    const { exceptionId, cardId, userContact, exceptionType, comment } = req.body;
+    if (!exceptionId || !cardId || !userContact || !exceptionType) {
         throw new ApiError(400, "Missing required fields")
+    }
+    const deliveryException = await DeliveryException.findOne({ exceptionId: exceptionId })
+    if (deliveryException) {
+        throw new ApiError(409, "This exception with the same Id already exists in the database.")
     }
     const card = await Card.findOne({ cardId: cardId });
     if (!card) {
         throw new ApiError(400, "Card not found");
     }
-    const existingExceptions = await DeliveryException.find({ card: card._id });
-    if (existingExceptions) {
-        // If delivery attempts exceed 2, return the card
-        if (existingExceptions.length >= 2) {
-            const newReturn = await Returned.create({
-                card: card._id,
-                userContact,
-                returnReason: "Maximum delivery attempts reached, card returned"
-            });
-            if (!newReturn) {
-                throw new ApiError(500, "Failed to add returned card for more than two delivery exceptions");
-            }
-            await updateCardStatus(cardId, 'RETURNED');
-            res.status(400).json(new ApiResponse(400, null, "Maximum delivery attempts reached, card returned"));
+    const ExceptionAttempts = card.deliveryExceptionAttempts
+    if ( ExceptionAttempts === 2) {
+        const returnedId = toString(existingExceptions[1]._id)
+        const newReturn = await Returned.create({
+            returnedId: returnedId,
+            card: card._id,
+            userContact,
+            returnReason: "Maximum delivery attempts reached, card returned"
+        });
+        if (!newReturn) {
+            throw new ApiError(500, "Failed to add returned card for more than two delivery exceptions");
         }
-        else {
-            existingExceptions = existingExceptions.map(async (exception) => {
-                exception.deliveryAttempts += 1;
-                await exception.save();
-            });
-        }
+        await updateCardStatus(cardId, 'RETURNED');
+        res.status(400).json(new ApiResponse(400, null, "Maximum delivery attempts reached, card returned"));
     }
-
+    else if (ExceptionAttempts === 0 && card.status !== 'PICKUP'){
+        throw new ApiError(400, "Status for this operation should be PICKUP")
+    }
 
     // Create a new delivery exception
     const newDeliveryException = await DeliveryException.create({
+        exceptionId: exceptionId,
         card: card._id,
         userContact,
         exceptionType,
         comment,
-        deliveryAttempts: existingExceptions.length + 1 // Increment delivery attempts
     });
     if (!newDeliveryException) {
         throw new ApiError(500, "Failed to save delivery exception in the database")
     }
-    await updateCardStatus(cardId, 'DELIVERY_EXCEPTION');
+    card.deliveryExceptionAttempts++
+    await card.save()
+    if(ExceptionAttempts===0){await updateCardStatus(cardId, 'DELIVERY_EXCEPTION')}
     res.status(201).json(new ApiResponse(201, newDeliveryException, "Delivery exception created successfully"));
 });
 
 const updateDeliveryException = asyncHandler(async (req, res) => {
     const deliveryExceptionId = req.params.id;
     const updateData = req.body;
-    const updatedDeliveryException = await DeliveryException.findByIdAndUpdate(deliveryExceptionId, updateData, { new: true });
+    const updatedDeliveryException = await DeliveryException.findOneAndUpdate({exceptionId:deliveryExceptionId}, updateData, { new: true });
     if (!updatedDeliveryException) {
         throw new ApiError(404, "Delivery exception not found");
     }
@@ -133,7 +134,7 @@ const updateDeliveryException = asyncHandler(async (req, res) => {
 
 const deleteDeliveryException = asyncHandler(async (req, res) => {
     const deliveryExceptionId = req.params.id;
-    const deletedDeliveryException = await DeliveryException.findByIdAndDelete(deliveryExceptionId).populate('card');
+    const deletedDeliveryException = await DeliveryException.findOneAndDelete({exceptionId:deliveryExceptionId}).populate('card');
     if (!deletedDeliveryException) {
         throw new ApiError(404, "Delivery exception not found");
     }

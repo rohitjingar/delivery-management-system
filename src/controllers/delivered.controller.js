@@ -64,7 +64,7 @@ const getDeliveryById = asyncHandler(async (req, res) => {
     if(!deliveryId){
         throw new ApiError(400, "Delivery ID is missing")
     }
-    const delivery = await Delivered.findById(deliveryId);
+    const delivery = await Delivered.findOne({deliveredId:deliveryId});
     if (!delivery) {
         throw new ApiError(404, "Delivery not found");
     }
@@ -72,34 +72,43 @@ const getDeliveryById = asyncHandler(async (req, res) => {
 });
 
 const createDelivery = asyncHandler(async (req, res) => {
-    const { cardId, userContact, comment } = req.body;
-    
+    const {deliveredId, cardId, userContact, comment } = req.body;
     // Validate required fields
-    if (!cardId || !userContact) {
+    if (!deliveredId || !cardId || !userContact) {
         throw new ApiError(400, "Missing required fields");
+    }
+    const deliveredData = await Delivered.findOne({deliveredId:deliveredId})
+    if(deliveredData){
+        throw new ApiError(400, "This delivery of the same Id has already been added.")
     }
     const card = await Card.findOne({ cardId });
     if(!card){
         throw new ApiError(400, 'Card does not exist');
     }
-    // Create a new delivery instance
-    const newDelivery = await Delivered.create({
-        card: card._id  ,
-        userContact,
-        comment
-    });
-    if(!newDelivery){
-        throw new ApiError(500, "Failed to create delivery");
+    if(card.status === 'PICKUP' || card.status === 'DELIVERY_EXCEPTION'){
+        // Create a new delivery instance
+        const newDelivery = await Delivered.create({
+            deliveredId: deliveredId,
+            card: card._id,
+            userContact,
+            comment
+        });
+        if(!newDelivery){
+            throw new ApiError(500, "Failed to create delivery");
+        }
+        updateCardStatus(card._id, 'DELIVERED');
+        // Send response with the newly created delivery
+        res.status(201).json(new ApiResponse(201, newDelivery, "Delivery created successfully"));
     }
-    updateCardStatus(card._id, 'DELIVERED');
-    // Send response with the newly created delivery
-    res.status(201).json(new ApiResponse(201, newDelivery, "Delivery created successfully"));
+    else{
+        throw  new ApiError(400, `The current status of this card is ${card.status},, which is not valid for this operation`)
+    }
 });
 
 const updateDelivery = asyncHandler(async (req, res) => {
     const deliveryId = req.params.id;
     const updateData = req.body;
-    const updatedDelivery = await Delivered.findByIdAndUpdate(deliveryId, updateData, { new: true });
+    const updatedDelivery = await Delivered.findOneAndUpdate({deliveredId: deliveryId}, updateData, { new: true });
     if (!updatedDelivery) {
         throw new ApiError(404, "Delivery not found");
     }
@@ -108,7 +117,7 @@ const updateDelivery = asyncHandler(async (req, res) => {
 
 const deleteDelivery = asyncHandler(async (req, res) => {
     const deliveryId = req.params.id;
-    const deletedDelivery = await Delivered.findByIdAndDelete(deliveryId).populate('card');
+    const deletedDelivery = await Delivered.findOneAndDelete({deliveredId: deliveryId}).populate('card');
     if (!deletedDelivery) {
         throw new ApiError(404, "Delivery not found");
     }

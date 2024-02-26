@@ -74,7 +74,7 @@ const  createPickup = asyncHandler(async (req, res) => {
     }
     const pickup = await Pickup.findone({pickupId:pickupId})
     if(pickup){
-       throw new ApiError(409,"Pickup already exists.")
+       throw new ApiError(409,"Pickup with same Id already exists.")
     }
     const card  = await Card.findone( { cardId: cardId} )
     if(!card){

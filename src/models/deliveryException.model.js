@@ -23,12 +23,6 @@ const deliveryExceptionSchema = new mongoose.Schema({
     type: String,
     required: true // Type of delivery exception
   },
-  deliveryAttempts: {
-    type: Number,
-    default: 0, // Initialize with 0 delivery attempts
-    min: 0,
-    max: 2 // Limit delivery attempts to 2
-  },
   comment: String // Additional comments or remarks
 });
 
