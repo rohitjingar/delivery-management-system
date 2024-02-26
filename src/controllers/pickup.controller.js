@@ -68,16 +68,23 @@ const  getPickupById = asyncHandler(async (req, res) => {
 
 
 const  createPickup = asyncHandler(async (req, res) => {
-    const { cardId, userContact, courierPartner, pickupLocation, pickupTimestamp } = req.body;
-    if(!cardId || !userContact || !courierPartner || !pickupLocation || !pickupTimestamp){
+    const {pickupId, cardId, userContact, courierPartner, pickupLocation, pickupTimestamp } = req.body;
+    if(!pickupId || !cardId || !userContact || !courierPartner || !pickupLocation || !pickupTimestamp){
         throw new ApiError(400, "Missing required fields")
+    }
+    const pickup = await Pickup.findone({pickupId:pickupId})
+    if(pickup){
+       throw new ApiError(409,"Pickup already exists.")
     }
     const card  = await Card.findone( { cardId: cardId} )
     if(!card){
        throw new ApiError(400, "Card not found")
     }
-
+    if(card.status !== 'CREATED'){
+      throw new ApiError(400, "Status for this operation should be CREATED")
+    }
     const newPickup = await Pickup.create({
+        pickupId:pickupId,
         card: card._id,
         userContact,
         courierPartner,
